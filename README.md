@@ -2,6 +2,9 @@
 A Moodle user script, which adds the ability to add favorite courses.
 
 Feel free to contribute.
+
+![image-20230223172825027](res/screenshot1.png)
+
 ## Installation
 To use this moodle script, a user script extension is required. Violentmonkey is a good choice for Chrome, Firefox and Edge. See [https://violentmonkey.github.io/get-it/](https://violentmonkey.github.io/get-it/)
 
@@ -14,6 +17,6 @@ To use this moodle script, a user script extension is required. Violentmonkey is
 When a user script extension is installed, go to [https://github.com/Seppli11/Moodle-Favorites/raw/main/moodle-favorites.user.js](https://github.com/Seppli11/Moodle-Favorites/raw/main/moodle-favorites.user.js). 
 A page should open, which lets you install the script.
 
-![Screenshot from 2023-02-23 15-35-01](res/README/Screenshot from 2023-02-23 15-35-01.png)
+![Screenshot from 2023-02-23 15-35-01](res/installation.png)
 
 Once installled, the script will auto-update when a new version is available.

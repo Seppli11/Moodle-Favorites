@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://moodle.zhaw.ch/*
 // @grant       none
-// @version     1.2
+// @version     1.3
 // @author      sebastian.zumbrunn@pm.me
 // @description Favorite courses in Moodle
 // ==/UserScript==
@@ -20,6 +20,17 @@ function addGlobalStyle(css) {
   const style = document.createElement('style');
   style.innerHTML = css;
   head.appendChild(style);
+}
+
+/**
+ * Polyfill for window.showOpenFilePicker from https://stackoverflow.com/a/69118077
+ * 
+ * @param {Object} options 
+ * @returns 
+ */
+function showOpenFilePicker(options) {
+  return new Promise((resolve) => {
+  });
 }
 
 function shortenString(str) {
@@ -98,6 +109,10 @@ class Model {
     this.#fireListeners()
   }
 
+  clear() {
+    this.#setFavorites([])
+  }
+
   #setFavorites(favorites) {
     const changed = this.#favorites != favorites
     this.#favorites = favorites;
@@ -106,15 +121,27 @@ class Model {
   }
 
   load() {
+    this.import(localStorage.getItem(FAVORITES_LOCAL_STORAGE))
+  }
+
+  import(importJson = "[]") {
     try {
-      let favorites = JSON.parse(localStorage.getItem(FAVORITES_LOCAL_STORAGE) ?? "[]")
-      if (!Array.isArray(favorites)) {
+      let loadedFavorites = JSON.parse(importJson)
+      if (!Array.isArray(loadedFavorites)) {
         console.warn("Loaded favorites isn't an array")
         this.#setFavorites([])
         return;
       }
-      favorites = favorites.map(({ name = "", id = 0 }) => ({ name, id }))
-      this.#setFavorites(favorites)
+      for (const { id = "", name = 0 } of loadedFavorites) {
+        const existingFavorite = this.getFavorite(id)
+        if (existingFavorite != null) {
+          existingFavorite.name = name
+        } else {
+          this.#favorites.push({ id, name })
+        }
+      }
+
+      this.#fireListeners()
     } catch (e) {
       console.error("Couldn't load favorites", e);
       this.#setFavorites([])
@@ -162,6 +189,10 @@ function createFavoriteBar() {
     width: unset;
     flex-grow: 1;
   }
+
+  #favorite-el #clear-btn {
+    color: rgb(153, 0, 0);
+  }
   `)
 
   console.log("add favorite to bar")
@@ -183,6 +214,9 @@ function createFavoriteBar() {
             </div>
             <div class="dropdown-divider"></div>
             <a id="favorite-btn" class="dropdown-item" href="#">Favorite Current Page</a>
+            <a id="export-btn" class="dropdown-item" href="#">Export Favorites <i class="bi bi-cloud-download-fill"></i></a>
+            <a id="import-btn" class="dropdown-item" href="#">Import Favorites <i class="bi bi-cloud-upload-fill"></i></a>
+            <a id="clear-btn" class="dropdown-item" href="#">Clear Favorites<i class="bi bi-trash-fill"></i></a>
           </div>
         </div>
       </div>
@@ -199,6 +233,10 @@ function createFavoriteBar() {
   if (courseId == null || model.courseAlreadyFavoritized(courseId)) {
     favoriteBtn.classList.add("disabled")
   }
+
+  navEl.querySelector("#export-btn").addEventListener('click', (e) => exportFavorites())
+  navEl.querySelector("#import-btn").addEventListener('click', (e) => importFavorites())
+  navEl.querySelector("#clear-btn").addEventListener('click', (e) => clearFavorites())
 }
 
 function updateFavoriteBar() {
@@ -235,6 +273,44 @@ function updateFavoriteBar() {
   favoriteBtn.classList.toggle("disabled", model.courseAlreadyFavoritized(courseId) || courseId == null)
 }
 
+function exportFavorites() {
+  const aEl = document.createElement("a")
+  const block = new Blob([JSON.stringify(model.favorites)], { type: "application/json" })
+  const url = URL.createObjectURL(block)
+  aEl.setAttribute("href", url)
+  aEl.setAttribute("download", "favorites.json")
+  aEl.click()
+}
+
+async function importFavorites() {
+  const input = document.createElement("input")
+  input.type = "file"
+  input.multiple = false
+  input.accept = "*.json"
+
+  input.addEventListener("change", () => {
+    if (input.files.length == 0) return;
+    const file = input.files[0]
+    const reader = new FileReader()
+    reader.onload = () => {
+      model.import(reader.result)
+      alert("Imported favorites successfully")
+    }
+
+    reader.readAsText(file)
+  })
+
+  input.click()
+}
+
+
+function clearFavorites() {
+  const conformText = prompt("Are you sure you want to clear all favorites? Type 'yes' to confirm")
+  if (conformText == "yes") {
+    model.clear()
+    alert("Favorites have been cleared")
+  }
+}
 // ------ Main --------------
 const model = new Model()
 model.addListener(() => updateFavoriteBar())
