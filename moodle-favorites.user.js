@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://moodle.zhaw.ch/*
 // @grant       none
-// @version     1.3
+// @version     1.4
 // @author      sebastian.zumbrunn@pm.me
 // @description Favorite courses in Moodle
 // ==/UserScript==
