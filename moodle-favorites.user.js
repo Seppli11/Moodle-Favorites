@@ -13,6 +13,7 @@ const FAVORITES_LOCAL_STORAGE = "favorites"
 const NAVBAR_CLASS = "primary-navigation"
 const MAX_NAME_LENGTH = 30
 
+// ------ Utils Function ------
 function addGlobalStyle(css) {
   const head = document.getElementsByTagName('head')[0];
   if (!head) { return; }
@@ -35,57 +36,99 @@ function getCourseUrl(courseId) {
   return `${location.origin}/course/view.php?id=${courseId}`
 }
 
-function loadFavorites() {
-  try {
-    const favorites = JSON.parse(localStorage.getItem(FAVORITES_LOCAL_STORAGE) ?? "[]")
-    if (!Array.isArray(favorites)) {
-      console.warn("Loaded favorites isn't an array")
-      return [];
+
+// ------ Model ------
+
+class Model {
+  #favorites = []
+  #listeners = []
+
+  constructor() {
+    this.load()
+    this.addListener(() => this.store())
+  }
+
+  addListener(listener) {
+    this.#listeners.push(listener)
+  }
+
+  #fireListeners() {
+    this.#listeners.forEach(listener => listener())
+  }
+
+  get favorites() {
+    return this.#favorites
+  }
+
+  getFavorite(courseId) {
+    return this.#favorites.find(obj => obj.id == courseId)
+  }
+
+  addFavorite({ name, id }) {
+    if (this.courseAlreadyFavoritized(id)) {
+      console.log("Page is already a favorite")
+      return
     }
-    favorites.map(({ name = "", id = 0 }) => { name, id })
-    return favorites
-  } catch (e) {
-    console.error("Couldn't load favorites", e);
-    return []
+    this.#favorites.push({ name, id })
+    this.#fireListeners()
+  }
+
+  addCurrentCourse() {
+    const name = document.title.replace("Kurs: ", "")
+    this.addFavorite({ name, id: courseId })
+  }
+
+  deleteFavorite(courseId) {
+    this.#setFavorites(this.favorites.filter(obj => obj.id != courseId))
+  }
+
+
+  courseAlreadyFavoritized(courseId) {
+    return this.getFavorite(courseId) != null
+  }
+
+  editFavorite(courseId, newName) {
+    const favoriteObj = this.getFavorite(courseId)
+    if (favoriteObj == null) {
+      console.warn(`course id ${courseId} not found`);
+      return
+    }
+
+    favoriteObj.name = newName
+    this.#fireListeners()
+  }
+
+  #setFavorites(favorites) {
+    const changed = this.#favorites != favorites
+    this.#favorites = favorites;
+
+    if (changed) this.#fireListeners()
+  }
+
+  load() {
+    try {
+      let favorites = JSON.parse(localStorage.getItem(FAVORITES_LOCAL_STORAGE) ?? "[]")
+      if (!Array.isArray(favorites)) {
+        console.warn("Loaded favorites isn't an array")
+        this.#setFavorites([])
+        return;
+      }
+      favorites = favorites.map(({ name = "", id = 0 }) => ({ name, id }))
+      this.#setFavorites(favorites)
+    } catch (e) {
+      console.error("Couldn't load favorites", e);
+      this.#setFavorites([])
+    }
+  }
+
+  store() {
+    const favoritesStr = JSON.stringify(this.#favorites)
+    localStorage.setItem(FAVORITES_LOCAL_STORAGE, favoritesStr)
   }
 }
 
-function storeFavorites() {
-  const favoritesStr = JSON.stringify(favorites)
-  localStorage.setItem(FAVORITES_LOCAL_STORAGE, favoritesStr)
-}
 
-function courseAlreadyFavoritized() {
-  return favorites.some(obj => obj.id == courseId)
-}
-
-function favoriteCurrentPage() {
-  const name = document.title.replace("Kurs: ", "")
-  if (courseAlreadyFavoritized()) {
-    console.log("Page already favorized")
-    return
-  }
-  favorites.push({ name, id: courseId })
-  storeFavorites()
-}
-
-function deleteFavorite(courseId) {
-  favorites = favorites.filter(obj => obj.id != courseId)
-  storeFavorites()
-  updateFavoriteBar()
-}
-
-function editFavorite(courseId, newName) {
-  const favoriteObj = favorites.find(obj => obj.id == courseId)
-  if (favoriteObj == null) {
-    console.warn(`course id ${courseId} not found`);
-    return
-  }
-
-  favoriteObj.name = newName
-  storeFavorites()
-  updateFavoriteBar()
-}
+// ------ UI ------
 
 function findPrimaryNavbarEl() {
   const primary_navbar_div = document.getElementsByClassName(NAVBAR_CLASS)[0]
@@ -151,10 +194,9 @@ function createFavoriteBar() {
   const favoriteBtn = navEl.querySelector("#favorite-btn")
   favoriteBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    favoriteCurrentPage()
-    updateFavoriteBar()
+    model.addCurrentCourse()
   })
-  if (courseId == null || courseAlreadyFavoritized()) {
+  if (courseId == null || model.courseAlreadyFavoritized(courseId)) {
     favoriteBtn.classList.add("disabled")
   }
 }
@@ -170,12 +212,12 @@ function updateFavoriteBar() {
         <i class="del-btn fav-btn bi bi-trash-fill"></i>
       </div>
     `
-    div.querySelector(".del-btn").addEventListener('click', () => deleteFavorite(obj.id))
+    div.querySelector(".del-btn").addEventListener('click', () => model.deleteFavorite(obj.id))
     div.querySelector(".edit-btn").addEventListener('click', e => {
 
       const newName = prompt("Edit course name:", obj.name)
       if (newName == null || newName.trim() == "") return;
-      editFavorite(obj.id, newName)
+      model.editFavorite(obj.id, newName)
     })
 
     return div
@@ -183,18 +225,19 @@ function updateFavoriteBar() {
 
   const favoriteDropdown = document.getElementById("favorite-dropdown")
   favoriteDropdown.innerHTML = ""
-  if (favorites.length > 0) {
-    favorites.map(obj => createDropdownItem(obj)).forEach(domEl => favoriteDropdown.append(domEl))
+  if (model.favorites.length > 0) {
+    model.favorites.map(obj => createDropdownItem(obj)).forEach(domEl => favoriteDropdown.append(domEl))
   } else {
     favoriteDropdown.innerHTML = `<span class="dropdown-item disabled">No Favorites</span>`
   }
 
   const favoriteBtn = document.getElementById("favorite-btn")
-  favoriteBtn.classList.toggle("disabled", courseAlreadyFavoritized())
+  favoriteBtn.classList.toggle("disabled", model.courseAlreadyFavoritized(courseId) || courseId == null)
 }
 
-// ------ MAIN --------------
-let favorites = loadFavorites()
+// ------ Main --------------
+const model = new Model()
+model.addListener(() => updateFavoriteBar())
 const courseId = loadCourseId()
 
 createFavoriteBar()
