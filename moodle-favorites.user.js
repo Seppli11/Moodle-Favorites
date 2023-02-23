@@ -316,5 +316,12 @@ const model = new Model()
 model.addListener(() => updateFavoriteBar())
 const courseId = loadCourseId()
 
+// reload model when storage changes
+addEventListener('storage', e => {
+  if (e.key == FAVORITES_LOCAL_STORAGE) {
+    model.load()
+  }
+})
+
 createFavoriteBar()
 updateFavoriteBar()
