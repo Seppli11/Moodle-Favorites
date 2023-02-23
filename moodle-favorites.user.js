@@ -5,7 +5,7 @@
 // @grant       none
 // @version     1.1
 // @author      sebastian.zumbrunn@pm.me
-// @description 22/02/2023, 08:32:03
+// @description Favorite courses in Moodle
 // ==/UserScript==
 
 
