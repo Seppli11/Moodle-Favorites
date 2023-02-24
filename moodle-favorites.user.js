@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://moodle.zhaw.ch/*
 // @grant       none
-// @version     1.4
+// @version     1.5
 // @author      sebastian.zumbrunn@pm.me
 // @description Favorite courses in Moodle
 // ==/UserScript==
@@ -24,9 +24,9 @@ function addGlobalStyle(css) {
 
 /**
  * Polyfill for window.showOpenFilePicker from https://stackoverflow.com/a/69118077
- * 
- * @param {Object} options 
- * @returns 
+ *
+ * @param {Object} options
+ * @returns
  */
 function showOpenFilePicker(options) {
   return new Promise((resolve) => {
@@ -190,9 +190,17 @@ function createFavoriteBar() {
     flex-grow: 1;
   }
 
+  #favorite-dropdown .active-favorite::before {
+    content: "•";
+    margin-right: 5px;
+    margin-left: -12px;
+    color: #0066cc;
+  }
+
   #favorite-el #clear-btn {
     color: rgb(153, 0, 0);
   }
+
   `)
 
   console.log("add favorite to bar")
@@ -250,6 +258,12 @@ function updateFavoriteBar() {
         <i class="del-btn fav-btn bi bi-trash-fill"></i>
       </div>
     `
+
+    // add .active-favorite class to current course
+    if (obj.id == courseId) {
+      div.classList.add("active-favorite")
+    }
+
     div.querySelector(".del-btn").addEventListener('click', () => model.deleteFavorite(obj.id))
     div.querySelector(".edit-btn").addEventListener('click', e => {
 
