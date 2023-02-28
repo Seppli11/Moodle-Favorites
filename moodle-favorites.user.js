@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://moodle.zhaw.ch/*
 // @grant       none
-// @version     1.5
+// @version     1.6
 // @author      sebastian.zumbrunn@pm.me
 // @description Favorite courses in Moodle
 // ==/UserScript==
@@ -201,6 +201,12 @@ function createFavoriteBar() {
     color: rgb(153, 0, 0);
   }
 
+  #export-btn,
+  #import-btn,
+  #clear-btn {
+    display: flex;
+    justify-content: space-between;
+  }
   `)
 
   console.log("add favorite to bar")
