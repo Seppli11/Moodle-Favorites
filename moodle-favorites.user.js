@@ -2,8 +2,11 @@
 // @name        Moodle Favorites
 // @namespace   Violentmonkey Scripts
 // @match       https://moodle.zhaw.ch/*
+// @grant       GM_setValue
+// @grant       GM_getValue
+// @grant       GM_addValueChangeListener
 // @grant       none
-// @version     1.5
+// @version     1.6
 // @author      sebastian.zumbrunn@pm.me
 // @description Favorite courses in Moodle
 // ==/UserScript==
@@ -22,17 +25,6 @@ function addGlobalStyle(css) {
   head.appendChild(style);
 }
 
-/**
- * Polyfill for window.showOpenFilePicker from https://stackoverflow.com/a/69118077
- *
- * @param {Object} options
- * @returns
- */
-function showOpenFilePicker(options) {
-  return new Promise((resolve) => {
-  });
-}
-
 function shortenString(str) {
   if (str == null) return "";
   return str.substring(0, Math.min(str.length, MAX_NAME_LENGTH))
@@ -45,6 +37,28 @@ function loadCourseId() {
 
 function getCourseUrl(courseId) {
   return `${location.origin}/course/view.php?id=${courseId}`
+}
+
+// ------ Storage Polyfill ------
+
+
+class LocalStorage {
+  static setItem(key, value) {
+    GM_setValue(key, value)
+    localStorage.setItem(key, value)
+  }
+
+  static getItem(key) {
+    return localStorage.getItem(key) ?? GM_getValue(key)
+  }
+
+  static addValueListener(name, callback) {
+    addEventListener('storage', e => {
+      if (e.key == name) {
+        callback();
+      }
+    })
+  }
 }
 
 
@@ -121,7 +135,8 @@ class Model {
   }
 
   load() {
-    this.import(localStorage.getItem(FAVORITES_LOCAL_STORAGE))
+    console.log("reload favorites")
+    this.import(LocalStorage.getItem(FAVORITES_LOCAL_STORAGE))
   }
 
   import(importJson = "[]") {
@@ -150,7 +165,7 @@ class Model {
 
   store() {
     const favoritesStr = JSON.stringify(this.#favorites)
-    localStorage.setItem(FAVORITES_LOCAL_STORAGE, favoritesStr)
+    LocalStorage.setItem(FAVORITES_LOCAL_STORAGE, favoritesStr)
   }
 }
 
@@ -331,11 +346,7 @@ model.addListener(() => updateFavoriteBar())
 const courseId = loadCourseId()
 
 // reload model when storage changes
-addEventListener('storage', e => {
-  if (e.key == FAVORITES_LOCAL_STORAGE) {
-    model.load()
-  }
-})
+LocalStorage.addValueListener(FAVORITES_LOCAL_STORAGE, () => model.load())
 
 createFavoriteBar()
 updateFavoriteBar()
