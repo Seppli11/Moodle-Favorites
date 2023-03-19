@@ -216,6 +216,12 @@ function createFavoriteBar() {
     color: rgb(153, 0, 0);
   }
 
+  #export-btn,
+  #import-btn,
+  #clear-btn {
+    display: flex;
+    justify-content: space-between;
+  }
   `)
 
   console.log("add favorite to bar")
